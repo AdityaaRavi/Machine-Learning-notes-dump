@@ -1,5 +1,5 @@
 # Intermediate Machine Learning
-Based on the Kaggle Tutorial ("Intermediate Machine Learning")[https://www.kaggle.com/learn/intermediate-machine-learning] by Alexis Cook.
+Based on the Kaggle Tutorial ["Intermediate Machine Learning"](https://www.kaggle.com/learn/intermediate-machine-learning) by Alexis Cook.
 
 ## 1. Introduction
 **Goals:**
@@ -161,8 +161,9 @@ Sno | Method                      | Usefulness                                  
 ```py
 ########## Example code to do this
 # Get list of categorical variables
-s = (X_train.dtypes == 'object')
-object_cols = list(s[s].index)
+s = (X_train.dtypes == 'object') # get a dictionary with each column name followed by a boolean that says if the data
+                                 # type that each column stores is "object" or not.
+object_cols = list(s[s].index) # 
 
 print("Categorical variables:")
 print(object_cols)
@@ -268,6 +269,77 @@ print("MAE from Approach 3 (One-Hot Encoding):")
 print(score_dataset(OH_X_train, OH_X_valid, y_train, y_valid))
 ```
 
+## 4. Pipelines 
+QQ      | Answer
+---     | ---
+What?   | A simple way to keep code organized - bundle preprocessing and modeling into one single step.
+Why?    | Cleaner code, Fewer bugs, Easier to deploy to production, More options for model validation (example: Cross-Validation)
+
+### Three Steps to create a pipeline
+
+***Step 1: Define Preprocessing Steps***
+- Bundle all the preprocessing steps using a `sklearn.compute.ColumnTransfer`
+```py
+# Import the ColumnTransfer class
+from sklearn.compute import ColumnTransfer
+# Import the Pipeline class because that is just how you combine multiple steps...
+from sklearn.pipeline import Pipeline
+# Import the libraries needed for the actual preprocessing
+from sklearn.impute import SimpleImputer # imputer to fill in missing values using the average of each column
+from sklearn.preprocessing import OneHotEncoder # encoder to convert Categorical variables into numbers
+
+# Preprocessing for numerical data -- Replace missing values with column averages
+numerical_transformer = SimpleImputer(strategy='constant')
+
+# ------------------------ pipeline syntax example -----------------
+# Preprocessing for categorical data -- Replace missing values with the most frequently occuring value, and then OneHotEncode it.
+categorical_transformer = Pipeline(steps=[ 
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+# Bundle preprocessing for numerical and categorical data 
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_cols),
+        ('cat', categorical_transformer, categorical_cols)
+    ])
+
+```
+***Step 2: Define the Model***
+- Nothing special here
+```py
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor(n_estimators=100, random_state=0)
+```
+
+***Step 3: Create and Evaluate the Pipeline***
+- Just like we did for preprocessing, we will now create a pipline for the whole thing
+- Notice:
+    - Only a single line of code needed to do *everything* - imputation, OneHotEncoding, model training, etc..
+    - Now, just directly pass in the unprocessed dataset to the pipeline line in the `.predict(data_set)` command, and it takes care of all the preprocessing for you!
+- Pipeline syntax:
+    - `Pipeline(steps=list(tuples))`, where `tuples = 'label', method`.
+
+```py
+from sklearn.metrics import mean_absolute_error
+
+# Bundle preprocessing and modeling code in a pipeline
+my_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                              ('model', model)
+                             ])
+
+# Preprocessing of training data, fit model 
+my_pipeline.fit(X_train, y_train)
+
+# Preprocessing of validation data, get predictions
+preds = my_pipeline.predict(X_valid)
+
+# Evaluate the model
+score = mean_absolute_error(y_valid, preds)
+print('MAE:', score)
+```
 
 # Commands Bitbucket
  ```py
@@ -306,6 +378,13 @@ final_X_test = pd.DataFrame(final_imputer.transform(X_test))
 ####### Drop Categorical variables
 drop_X_train = X_train.select_dtypes(exclude=['object'])
 drop_X_valid = X_valid.select_dtypes(exclude=['object'])
+
+###### Get number of unique entries in each column with categorical data
+object_nunique = list(map(lambda col: X_train[col].nunique(), object_cols))
+d = dict(zip(object_cols, object_nunique))
+
+# Print number of unique entries by column, in ascending order
+sorted(d.items(), key=lambda x: x[1])
 
 ###### Subtract two lists
 bad_label_cols = list(set(object_cols)-set(good_label_cols))
