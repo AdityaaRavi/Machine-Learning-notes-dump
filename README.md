@@ -7,5 +7,6 @@ As of now, this repo has:
 Folder                             | File           | What?
 -----                              |    -----       | -----
 tut1                               | kaggle-tut1.md | **Introduction to Machine Learning:** How models work, basic pandas, steps to create a model, over/under fitting, Decision Trees, Random Forest Regressors, MAE (Mean Absolute Error)
-intermediate-machine-learning-tut2 | tut2.md        | **Intermediate Machine Learning:** Missing values, Categorical Variables, Pipelines, Cross-validation, XGBoost, avoiding common data science mistakes.
+intermediate-machine-learning-tut2 | tut2.md        | **Intermediate Machine Learning:** Missing values, Categorical Variables, Pipelines, Cross-validation*, XGBoost*, avoiding common data science mistakes*.
 
+* - In Progress
