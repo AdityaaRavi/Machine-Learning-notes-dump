@@ -340,6 +340,71 @@ preds = my_pipeline.predict(X_valid)
 score = mean_absolute_error(y_valid, preds)
 print('MAE:', score)
 ```
+## 5. Cross-Validation
+- Usually, we have to split the dataset into training and validation to be able to find the best training parameters and pre-processing methods.
+- BUT: more the data our model is exposed to, the better.
+- With a 80-20 training-validation split, **WHICH** 80% the model is accurate on could make a huge difference
+- in cross-validation, you train and test the model multiple times, just changing which portion of data is hidden away during training.
+
+### Welcome cross-validation:
+- In cross-validation, we run our modeling process on different subsets of the data to get multiple measures of model quality.
+
+- For example, we could begin by dividing the data into 5 pieces, each 20% of the full dataset. In this case, we say that we have broken the data into 5 "folds".
+![](cross-validation-folds-1.png)
+
+Run one *experiment* per fold:
+- ex 1: first fold = validation, others training
+- ex 2: second fold = validation, others training
+...
+- keep going on until all data has been used to test and improve the model.
+
+### When to use cross-validation:
+*Note:* with cross validation you are basically creating MULTIPLE models (one for each fold as validation set) so it is MANY times slower.
+
+- Small datasets: extra computation doesn't take much time, MUST use cross-validation
+- Large datasets: enough data exists that which 20% is hidden doesn't make much of a difference -- don't use cross-validation.
+
+No exact definition on whats big and whats small -- intution.
+- Alternatively, you can run cross-validation and see if the scores for each experiment seem close. If each experiment yields the same results, a single validation set is probably sufficient
+
+### Example:
+- While it's possible to do cross-validation without pipelines, it is quite difficult! Using a pipeline will make the code remarkably straightforward.
+```py
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+
+my_pipeline = Pipeline(steps=[('preprocessor', SimpleImputer()),
+                              ('model', RandomForestRegressor(n_estimators=50,
+                                                              random_state=0))
+                             ])
+
+# sci-kit learn's inbuilt tool that helps us obtain the cross-validation mae scores.
+from sklearn.model_selection import cross_val_score
+
+# Multiply by -1 since sklearn calculates *negative* MAE
+scores = -1 * cross_val_score(my_pipeline, X, y,
+                              cv=5,
+                              scoring='neg_mean_absolute_error')
+
+print("MAE scores:\n", scores)
+```
+```
+MAE scores:
+ [301628.7893587  303164.4782723  287298.331666   236061.84754543
+ 260383.45111427]
+```
+Also note:
+- Using cross-validation yields a much better measure of model quality, with the added benefit of cleaning up our code: note that we no longer need to keep track of separate training and validation sets. So, especially for small datasets, it's a good improvement!
+
+
+## 6. XGBoost
+- In this tutorial, you will learn how to build and optimize models with gradient boosting. 
+- This method dominates many Kaggle competitions and achieves state-of-the-art results on a variety of datasets.
+
+
+
+
 
 # Commands Bitbucket
  ```py
