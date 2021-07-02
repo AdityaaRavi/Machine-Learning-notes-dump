@@ -401,8 +401,47 @@ Also note:
 ## 6. XGBoost
 - In this tutorial, you will learn how to build and optimize models with gradient boosting. 
 - This method dominates many Kaggle competitions and achieves state-of-the-art results on a variety of datasets.
+- Have been using random forest method, which achieves better performance than a single decision tree simply by averaging the predictions of many decision trees.
 
+*Random Forest method* is an **ensemble method**
+- ensemble methods combine the predictions of several different models (trees in the case of a random forest) to give a final prediction.
+- Gradient boosting is another example of this method.
 
+### What is Gradient Boosting?
+- Gradient boosting is a method that goes through cycles to iteratively add models into an ensemble.
+- It begins by initializing the ensemble with a single model, whose predictions can be pretty naive. (Even if its predictions are wildly inaccurate, subsequent additions to the ensemble will address those errors.)
+
+**In each iteration:**
+1. Use the current ensemble to make predictions for each testing row. To make a prediction, add up all the predictions from all models in the emsemble.
+2. Use these predictions to calculate the loss function (ex: mean squared error). Goal: minimize this loss function--hence the name "*Gradient* Boosting."
+3. Create a new model with such parameters that adding this new model to the ensemble will reduce the loss.
+4. Add the new model to the ensemble.
+5. repeat!
+
+![](xgboost1.png)
+
+### Usage:
+*XGBoost stands for extreme gradient boosting*, which is an implementation of gradient boosting with **several additional features focused on performance and speed.** (Scikit-learn has another version of gradient boosting, but XGBoost has some technical advantages.)
+
+In the next code cell, we import the scikit-learn API for XGBoost (xgboost.XGBRegressor) and also introduce ourselves to the many parameters that XGBoost opens up for tuning.
+
+**Parameters: !!! (Quite important)**
+```py
+from xgboost import XGBRegressor
+my_model = XGBRegressor(n_estimators=1000, learning_rate=0.05, n_jobs=4)
+my_model.fit(X_train, y_train, 
+             early_stopping_rounds=5, 
+             eval_set=[(X_valid, y_valid)], 
+             verbose=False)
+```
+S.no| Parameter name          | what does it alter?                   | How does it help? | Where to use it?
+----| -------------           |   -----------                         | ----------- | ----
+1   | `n_estimators`            | No. of times to repeat modeling cycle | Too low -- underfitting, Too high -- overfitting. Typical values range from 100-1000. | model defn.
+2   | `early_stopping_rounds=a` | If the quality of model decreases for 'a' straight iterations, stop training now regardless of `n_estimators` parameter | good way to find the ideal `n_estimators` value. Needs eval data to know when to stop--pass in X_valid and y_valid as paramters to `eval_set`. Set `n_estimators` high and use an appropriate `a` value. | model fitting.
+3   | `learning_rate`           | How much each additional model contributes to the model. | low learning rate ==> overfitting not a problem. default value = 0.1. Good Practice: Low `learning_rate`, high `n_estimators`. | model defn
+4   | `n_jobs`                  | number of threads used from the processor used during training | makes training faster for large dataset by enabling parallelization. | model defn.
+
+## 7. Data Leakage
 
 
 
