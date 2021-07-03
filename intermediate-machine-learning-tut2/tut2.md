@@ -442,6 +442,103 @@ S.no| Parameter name          | what does it alter?                   | How does
 4   | `n_jobs`                  | number of threads used from the processor used during training | makes training faster for large dataset by enabling parallelization. | model defn.
 
 ## 7. Data Leakage
+- In this tutorial, you will learn what data leakage is and how to prevent it. If you don't know how to prevent it, leakage will come up frequently, and it will ruin your models in subtle and dangerous ways. So, this is one of the most important concepts for practicing data scientists.
+- Data leakage (or leakage) happens when your training data contains information about the target, but similar data will not be available when the model is used for prediction.
+- In other words, leakage causes a model to look accurate until you start making decisions with the model, and then the model becomes very inaccurate.
+
+Two types of data leakage exists:
+- Target
+- Train-test contamination
+
+### Target Leakage
+- using data that **won't be available in real life before the model is used for predictions** to train the data.
+- Think timeline ==> will I know the correct value of field `a` in a record before my model is called upon to predict the value of another variable `b` for that record.
+- Is target leakage happens, you will still get very good predictions in training and testing data (even with crossvalidation!) but absoulutely terrible predictions in production.
+- just because a field is in the dataset doesn't mean it is relavent to the predictions or even if we know its value before the model has to make a prediction.
+- solution: drop such columns, there is litterally nothing else you can do.
+    - "To prevent this type of data leakage, any variable updated (or created) after the target value is realized (in real life, not training data) should be excluded."
+**Example:**
+- patient data has a bunch of data, among which are
+    - is_diseased
+    - is_under_treatment
+    - where `is_diseased` is what you want to predict using your model.
+- The true value of `is_under_treatment` can only be determined AFTER we know if someone `is_diseased`
+- just because someone is not under treatment yet doesn't mean they are not diseased--so it is just stupid to use if they are being treated as a factor that is used to predict if the person is diseased in the first place.
+
+### Train-Test Contamination
+A different type of leak occurs when you aren't careful to distinguish training data from validation data.
+- You can corrupt this process in subtle ways if the validation data affects the preprocessing behavior. This is sometimes called **train-test contamination**.
+
+- caused by doing *any* kind of **fitting**--be it for preprocessing or training the model--BEFORE the train-test split.
+
+- The end result? Your model may get good validation scores, giving you great confidence in it, but perform poorly when you deploy it to make decisions.
+
+- this is why you should always use pipelines to do EVERYTHING really--all preprocessing and fitting.
+
+**Example:**
+```py
+from sklearn.pipeline import make_pipeline
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+
+# Since there is no preprocessing, we don't need a pipeline (used anyway as best practice!)
+my_pipeline = make_pipeline(RandomForestClassifier(n_estimators=100))
+cv_scores = cross_val_score(my_pipeline, X, y, 
+                            cv=5,
+                            scoring='accuracy')
+
+print("Cross-validation accuracy: %f" % cv_scores.mean())
+```
+```
+Cross-validation accuracy: 0.980294
+```
+An accuracy of 98% is a tad bit too high to be true --> lets inspect more...
+
+**The definitions of what is stored in a given variable can be quite hazy:**
+Take this list of variables from the database:
+
+variable    | definition
+------------|------------------------------------------------------------- 
+card        | if credit card application accepted, 0 if not
+reports     | Number of major derogatory reports
+age         | Age n years plus twelfths of a year
+income      | Yearly income (divided by 10,000)
+share       | Ratio of monthly credit card expenditure to yearly income
+expenditure | Average monthly credit card expenditure
+owner       | 1 if owns home, 0 if rents
+selfempl    | 1 if self-employed, 0 if not
+dependents  | 1 + number of dependents
+months      | Months living at current address
+majorcards  | Number of major credit cards held
+active      | Number of active credit accounts
+
+- And take `expenditures` for example: Is the expenditure using the card which you are trying to predict if it will be issued, or is it from other sources.
+    - if it is from the card in question, then target leakage Klaxons must go off
+        - as this `expenditure` variable can be known ONLY IF AND AFTER the card is issued.
+    - else, no worries.
+- be sure to disregard any other varable whose value dependends on the leaked variable!
+    - so, in this case, the variable `share` defined as the ratio of expenditure to income should also be removed as its value depends on `expenditure`.
+
+- The definition is unclear for `majorcards` and `active` too (are they from before or after the card was issued?) -- so nuke them too, just in case.
+
+### Think.exe: Example situations for determining if/not there is a data-leakage.
+- This is tricky, and it depends on details of how data is collected (which is common when thinking about leakage). Would you at the beginning of the month decide how much leather will be used that month? If so, this is ok. But if that is determined during the month, you would not have access to it when you make the prediction. If you have a guess at the beginning of the month, and it is subsequently changed during the month, the actual amount used during the month cannot be used as a feature (because it causes leakage).
+- You have a new idea. You could use the amount of leather Nike ordered (rather than the amount they actually used) leading up to a given month as a predictor in your shoelace model.
+    - This could be fine, but it depends on whether they order shoelaces first or leather first. If they order shoelaces first, you won't know how much leather they've ordered when you predict their shoelace needs. If they order leather first, then you'll have that number available when you place your shoelace order, and you should be ok.
+
+- These features should be available at the moment you want to make a predition, and they're unlikely to be changed in the training data after the prediction target is determined. 
+    - But, the way he describes accuracy could be misleading if you aren't careful. If the price moves gradually, today's price will be an accurate predictor of tomorrow's price, but it may not tell you whether it's a good time to invest.
+
+- This poses a risk of both target leakage and train-test contamination (though you may be able to avoid both if you are careful).
+    - You have target leakage if a given patient's outcome contributes to the infection rate for his surgeon, which is then plugged back into the prediction model for whether that patient becomes infected.
+    - You also have a train-test contamination problem if you calculate this using all surgeries a surgeon performed, including those from the test-set. This would happen because the surgeon-risk feature accounts for data in the test set. Test sets exist to estimate how the model will do when seeing new data. So this contamination defeats the purpose of the test set.
+
+- We don't know the rules for when this is updated. If the field is updated in the raw data after a home was sold, and the home's sale is used to calculate the average, this constitutes a case of target leakage. At an extreme, if only one home is sold in the neighborhood, and it is the home we are trying to predict, then the average will be exactly equal to the value we are trying to predict. In general, for neighborhoods with few sales, the model will perform very well on the training data. But when you apply the model, the home you are predicting won't have been sold yet, so this feature won't work the same as it did in the training data
+
+
+
+### Conclusion:
+Data leakage can be multi-million dollar mistake in many data science applications. Careful separation of training and validation data can prevent train-test contamination, and pipelines can help implement this separation. Likewise, a combination of caution, common sense, and data exploration can help identify target leakage.
 
 
 
